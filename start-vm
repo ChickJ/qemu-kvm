@@ -1,0 +1,84 @@
+#!/bin/sh
+
+BRIDGE=br0
+TAP=tap0
+OVMF="-drive file=/usr/share/qemu/ovmf-x86_64-code.bin,if=pflash,format=raw,unit=0,readonly=on -drive file=nvram,if=pflash,format=raw,unit=1"
+
+if [ "$1" == "--help" ]; then
+	echo "Usage: start-vm [OPTIONS]"
+	echo "Start the virtual machine: taonga"
+	echo ""
+	echo "-b, --bios		start virtual machine with a legacy BIOS"
+	exit 0
+fi
+
+
+if [ "$1" == "-b" ] || [ "$1" == "--bios" ]; then
+	unset OVMF
+fi
+
+#
+# Create disk drive(s)
+#
+if [ ! -e "ssd.qcow2" ]; then
+	qemu-img create -f qcow2 "ssd.qcow2" 8G
+fi
+
+if [ ! -e "hdd.qcow2" ]; then
+	qemu-img create -f qcow2 "hdd.qcow2" 8G
+fi
+
+if [ ! -e "nvram" ]; then
+	cp /usr/share/qemu/ovmf-x86_64-vars.bin nvram
+fi
+
+#
+# Create network device
+#
+ip tuntap add ${TAP} mode tap group users
+ip link set ${TAP} up
+sleep 0.5s
+ip link set ${TAP} master ${BRIDGE}
+
+LC_ALL=C \
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+QEMU_AUDIO_DRV=spice \
+/usr/bin/qemu-kvm \
+-balloon virtio \
+-boot menu=off,strict=on \
+-cpu max,hv_time,hv_relaxed,hv_vapic,hv_spinlocks=0x1fff \
+-device usb-kbd \
+-device usb-mouse \
+-device usb-tablet \
+-display sdl \
+-drive file=setup.iso,format=raw,media=cdrom,readonly \
+-drive file=ssd.qcow2,format=qcow2,media=disk,if=virtio,index=0 \
+-drive file=hdd.qcow2,format=qcow2,media=disk,if=virtio,index=1 \
+-global ICH9-LPC.disable_s3=1 \
+-global ICH9-LPC.disable_s4=1 \
+-global kvm-pit.lost_tick_policy=delay \
+-m 4096 \
+-machine pc-q35-2.9,accel=kvm,usb=off,vmport=off,dump-guest-core=off \
+-msg timestamp=on \
+-name guest=taonga \
+-net nic,model=virtio,macaddr=52:54:00:2e:52:aa \
+-net tap,ifname=${TAP},script=no,downscript=no \
+-nodefaults \
+-no-hpet \
+-no-shutdown \
+-no-user-config \
+${OVMF} \
+-realtime mlock=off \
+-rtc base=localtime,driftfix=slew \
+-smp sockets=1,cores=4,threads=1 \
+-spice port=5901,addr=127.0.0.1,disable-ticketing,seamless-migration=on \
+-uuid 23305d4d-bdfd-41ad-ba73-1189f2fef475 \
+-usb \
+-vga vmware \
+-global vmware-svga.vgamem_mb=32768
+
+#
+# Destroy network device
+#
+ip link set ${TAP} down
+ip tuntap del ${TAP} mode tap

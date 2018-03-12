@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Taonga (BIOS)
+Type=Application
+Version=1.0
+Comment=Start the Taonga virtual machine using a legacy BIOS.
+Path=/home/jon.chick/srv/vm/Taonga
+Exec=/home/jon.chick/srv/vm/Taonga/start-vm -b
+Icon=/home/jon.chick/srv/vm/Taonga/workstation.png
+Terminal=false
+Categories=Development
