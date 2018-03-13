@@ -129,38 +129,23 @@ LC_ALL=C \
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
 QEMU_AUDIO_DRV=spice \
 /usr/bin/qemu-kvm \
--balloon virtio \
--boot menu=off,strict=on \
 -cpu max,hv_time,hv_relaxed,hv_vapic,hv_spinlocks=0x1fff \
--device usb-kbd \
--device usb-mouse \
--device usb-tablet \
 -display sdl \
--drive file=setup.iso,format=raw,media=cdrom,readonly \
--drive file=ssd.qcow2,format=qcow2,media=disk,if=virtio,index=0 \
--drive file=hdd.qcow2,format=qcow2,media=disk,if=virtio,index=1 \
--global ICH9-LPC.disable_s3=1 \
--global ICH9-LPC.disable_s4=1 \
--global kvm-pit.lost_tick_policy=delay \
--m 4096 \
--machine pc-q35-2.9,accel=kvm,usb=off,vmport=off,dump-guest-core=off \
--msg timestamp=on \
+-drive file=setup.iso,format=raw,media=cdrom,readonly,index=0 \
+-drive file=ssd.qcow2,format=qcow2,media=disk,if=virtio,index=1 \
+-drive file=hdd.qcow2,format=qcow2,media=disk,if=virtio,index=2 \
 -name guest=${COMPUTER_NAME} \
 -net nic,model=virtio,macaddr=${MAC} \
 -net tap,ifname=${TAP},script=no,downscript=no \
+-monitor pty \
 -nodefaults \
 -no-hpet \
 -no-shutdown \
 -no-user-config \
 ${OVMF} \
--realtime mlock=off \
--rtc base=localtime,driftfix=slew \
--smp sockets=1,cores=4,threads=1 \
--spice port=5901,addr=127.0.0.1,disable-ticketing,seamless-migration=on \
--uuid ${UUID} \
--usb \
--vga vmware \
--global vmware-svga.vgamem_mb=32768
+-readconfig vm.ini \
+-uuid ${UUID}
+
 
 # -----------------------------------------------------------------------------
 # Destroy network device
