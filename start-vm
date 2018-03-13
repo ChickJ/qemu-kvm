@@ -1,9 +1,51 @@
 #!/bin/sh
 
+# -----------------------------------------------------------------------------
+# >>>> CUSTOMIZE: Set the computer name. No spaces or boom!
+# -----------------------------------------------------------------------------
+COMPUTER_NAME=Taonga
+
+
+# -----------------------------------------------------------------------------
+# >>>> CUSTOIMIZE: Create disk drive(s)
+# -----------------------------------------------------------------------------
+if [ ! -e "ssd.qcow2" ]; then
+	qemu-img create -f qcow2 "ssd.qcow2" 8G
+fi
+
+if [ ! -e "hdd.qcow2" ]; then
+	qemu-img create -f qcow2 "hdd.qcow2" 8G
+fi
+
+
+# -----------------------------------------------------------------------------
+# Network interfaces
+# -----------------------------------------------------------------------------
 BRIDGE=br0
 TAP=tap0
-OVMF="-drive file=/usr/share/qemu/ovmf-x86_64-code.bin,if=pflash,format=raw,unit=0,readonly=on -drive file=nvram,if=pflash,format=raw,unit=1"
 
+
+# -----------------------------------------------------------------------------
+# The local path allows spaces in path.
+# -----------------------------------------------------------------------------
+SCRIPT_DIR="$(dirname "$(realpath -s "$0")")"
+
+
+# -----------------------------------------------------------------------------
+# Generate a dynamic mac address for each launch
+# -----------------------------------------------------------------------------
+MAC=$(printf 52:54:00; dd bs=1 count=3 if=/dev/random 2>/dev/null |hexdump -v -e '/1 ":%02X"')
+
+
+# -----------------------------------------------------------------------------
+# Generate a UUID for each launch
+# -----------------------------------------------------------------------------
+UUID=$(uuidgen)
+
+
+# -----------------------------------------------------------------------------
+# Print usage text
+# -----------------------------------------------------------------------------
 if [ "$1" == "--help" ]; then
 	echo "Usage: start-vm [OPTIONS]"
 	echo "Start the virtual machine: taonga"
@@ -13,33 +55,76 @@ if [ "$1" == "--help" ]; then
 fi
 
 
+# -----------------------------------------------------------------------------
+# >>>> CUSTOMIZE: UEFI specific settings
+#                   - ovmf-x86_64-code.bin    | ovmf-x86_64-vars.bin
+#                   - ovmf-x86_64-ms-code.bin | ovmf-x86_64-ms-vars.bin
+# -----------------------------------------------------------------------------
+OVMF="-drive file=/usr/share/qemu/ovmf-x86_64-code.bin,if=pflash,format=raw,unit=0,readonly=on -drive file=nvram,if=pflash,format=raw,unit=1"
 if [ "$1" == "-b" ] || [ "$1" == "--bios" ]; then
 	unset OVMF
+else
+	if [ ! -e "nvram" ]; then
+		cp /usr/share/qemu/ovmf-x86_64-vars.bin nvram
+	fi
 fi
 
-#
-# Create disk drive(s)
-#
-if [ ! -e "ssd.qcow2" ]; then
-	qemu-img create -f qcow2 "ssd.qcow2" 8G
+# -----------------------------------------------------------------------------
+# Create missing UEFI desktop shortcut
+# -----------------------------------------------------------------------------
+if [ ! -e "${COMPUTER_NAME}.desktop" ]; then
+	cat > "${COMPUTER_NAME}.desktop" <<EOF
+[Desktop Entry]
+Name=${COMPUTER_NAME}
+GenericName[en_US.UTF-8]=Start the ${COMPUTER_NAME} virtual machine.
+Type=Application
+Version=1.0
+Comment=Start the ${COMPUTER_NAME} virtual machine.
+Path=${SCRIPT_DIR}
+Exec=start-vm
+Icon=${SCRIPT_DIR}/vm.png
+Terminal=false
+Categories=Development
+EOF
+chmod +x "${COMPUTER_NAME}.desktop"
 fi
 
-if [ ! -e "hdd.qcow2" ]; then
-	qemu-img create -f qcow2 "hdd.qcow2" 8G
+
+# -----------------------------------------------------------------------------
+# Create missing BIOS desktop shortcut
+# -----------------------------------------------------------------------------
+if [ ! -e "${COMPUTER_NAME}-BIOS.desktop" ]; then
+	cat > "${COMPUTER_NAME}-BIOS.desktop" <<EOF
+[Desktop Entry]
+Name=${COMPUTER_NAME} (BIOS)
+GenericName[en_US.UTF-8]=Start the ${COMPUTER_NAME} virtual machine.
+Type=Application
+Version=1.0
+Comment=Start the ${COMPUTER_NAME} virtual machine.
+Path=${SCRIPT_DIR}
+Exec=start-vm -b
+Icon=${SCRIPT_DIR}/vm.png
+Terminal=false
+Categories=Development
+EOF
+chmod +x "${COMPUTER_NAME}-BIOS.desktop"
 fi
 
-if [ ! -e "nvram" ]; then
-	cp /usr/share/qemu/ovmf-x86_64-vars.bin nvram
-fi
 
-#
+# -----------------------------------------------------------------------------
 # Create network device
-#
+# printf "KERNEL==\"tun\", GROUP=\"users\", MODE=\"0660\", OPTIONS+=\"static_node=net/tun\"" > /etc/udev/rules.d/90-tuntap.rules
+# setcap cap_net_admin+ep /usr/sbin/ip
+# -----------------------------------------------------------------------------
 ip tuntap add ${TAP} mode tap group users
 ip link set ${TAP} up
 sleep 0.5s
 ip link set ${TAP} master ${BRIDGE}
 
+
+# -----------------------------------------------------------------------------
+# >>>> CUSTOIMIZE: Launch qemu-kvm
+# -----------------------------------------------------------------------------
 LC_ALL=C \
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
 QEMU_AUDIO_DRV=spice \
@@ -60,8 +145,8 @@ QEMU_AUDIO_DRV=spice \
 -m 4096 \
 -machine pc-q35-2.9,accel=kvm,usb=off,vmport=off,dump-guest-core=off \
 -msg timestamp=on \
--name guest=taonga \
--net nic,model=virtio,macaddr=52:54:00:2e:52:aa \
+-name guest=${COMPUTER_NAME} \
+-net nic,model=virtio,macaddr=${MAC} \
 -net tap,ifname=${TAP},script=no,downscript=no \
 -nodefaults \
 -no-hpet \
@@ -72,13 +157,13 @@ ${OVMF} \
 -rtc base=localtime,driftfix=slew \
 -smp sockets=1,cores=4,threads=1 \
 -spice port=5901,addr=127.0.0.1,disable-ticketing,seamless-migration=on \
--uuid 23305d4d-bdfd-41ad-ba73-1189f2fef475 \
+-uuid ${UUID} \
 -usb \
 -vga vmware \
 -global vmware-svga.vgamem_mb=32768
 
-#
+# -----------------------------------------------------------------------------
 # Destroy network device
-#
+# -----------------------------------------------------------------------------
 ip link set ${TAP} down
 ip tuntap del ${TAP} mode tap
