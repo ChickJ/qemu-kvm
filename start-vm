@@ -76,12 +76,12 @@ if [ ! -e "${COMPUTER_NAME}.desktop" ]; then
 	cat > "${COMPUTER_NAME}.desktop" <<EOF
 [Desktop Entry]
 Name=${COMPUTER_NAME}
-GenericName[en_US.UTF-8]=Start the ${COMPUTER_NAME} virtual machine.
+GenericName[en_US.UTF-8]=Virtual Machine
 Type=Application
 Version=1.0
 Comment=Start the ${COMPUTER_NAME} virtual machine.
 Path=${SCRIPT_DIR}
-Exec=start-vm
+Exec="${SCRIPT_DIR}/start-vm"
 Icon=${SCRIPT_DIR}/vm.png
 Terminal=false
 Categories=Development
@@ -97,12 +97,12 @@ if [ ! -e "${COMPUTER_NAME}-BIOS.desktop" ]; then
 	cat > "${COMPUTER_NAME}-BIOS.desktop" <<EOF
 [Desktop Entry]
 Name=${COMPUTER_NAME} (BIOS)
-GenericName[en_US.UTF-8]=Start the ${COMPUTER_NAME} virtual machine.
+GenericName[en_US.UTF-8]=Virtual Machine
 Type=Application
 Version=1.0
 Comment=Start the ${COMPUTER_NAME} virtual machine.
 Path=${SCRIPT_DIR}
-Exec=start-vm -b
+Exec="${SCRIPT_DIR}/start-vm" -b
 Icon=${SCRIPT_DIR}/vm.png
 Terminal=false
 Categories=Development
@@ -131,13 +131,10 @@ QEMU_AUDIO_DRV=spice \
 /usr/bin/qemu-kvm \
 -cpu max,hv_time,hv_relaxed,hv_vapic,hv_spinlocks=0x1fff \
 -display sdl \
--drive file=setup.iso,format=raw,media=cdrom,readonly,index=0 \
--drive file=ssd.qcow2,format=qcow2,media=disk,if=virtio,index=1 \
--drive file=hdd.qcow2,format=qcow2,media=disk,if=virtio,index=2 \
 -name guest=${COMPUTER_NAME} \
 -net nic,model=virtio,macaddr=${MAC} \
 -net tap,ifname=${TAP},script=no,downscript=no \
--monitor pty \
+-monitor vc \
 -nodefaults \
 -no-hpet \
 -no-shutdown \
