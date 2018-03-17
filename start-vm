@@ -130,9 +130,9 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
 QEMU_AUDIO_DRV=spice \
 /usr/bin/qemu-kvm \
 -cpu max,hv_time,hv_relaxed,hv_vapic,hv_spinlocks=0x1fff \
--display sdl \
+-display sdl,gl=on \
 -name guest=${COMPUTER_NAME} \
--net nic,model=virtio,macaddr=${MAC} \
+-net nic,model=virtio,macaddr=${MAC},addr=0x9 \
 -net tap,ifname=${TAP},script=no,downscript=no \
 -monitor vc \
 -nodefaults \
