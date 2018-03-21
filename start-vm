@@ -10,11 +10,11 @@ COMPUTER_NAME=Taonga
 # >>>> CUSTOIMIZE: Create disk drive(s)
 # -----------------------------------------------------------------------------
 if [ ! -e "ssd.qcow2" ]; then
-	qemu-img create -f qcow2 "ssd.qcow2" 8G
+	qemu-img create -o nocow=on -f qcow2 "ssd.qcow2" 8G
 fi
 
 if [ ! -e "hdd.qcow2" ]; then
-	qemu-img create -f qcow2 "hdd.qcow2" 8G
+	qemu-img create -o nocow=on -f qcow2 "hdd.qcow2" 8G
 fi
 
 
