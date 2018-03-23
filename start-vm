@@ -47,11 +47,16 @@ UUID=$(uuidgen)
 # Print usage text
 # -----------------------------------------------------------------------------
 if [ "$1" == "--help" ]; then
-	echo "Usage: start-vm [OPTIONS]"
-	echo "Start the virtual machine: taonga"
-	echo ""
-	echo "-b, --bios		start virtual machine with a legacy BIOS"
+	printf "Usage: start-vm [OPTIONS]\n"
+	printf "Start the virtual machine: taonga\n"
+	printf "\n"
+	printf "-b, --bios		start virtual machine with a legacy BIOS\n"
+	printf "-s  --snapshot    changes are temporary\n"
 	exit 0
+fi
+
+if [ "$1" == "-s" ] || [ "$1" == "--snapshot" ]; then
+	SNAPSHOT="- snapshot"
 fi
 
 
@@ -141,6 +146,7 @@ QEMU_AUDIO_DRV=spice \
 -no-user-config \
 ${OVMF} \
 -readconfig vm.ini \
+${SNAPSHOT} \
 -uuid ${UUID}
 
 
